@@ -49,26 +49,29 @@
     loader.load('3js.glb', (gltf) => {
         const model = gltf.scene;
 
-        // 3. AUTO-RESIZE LOGIC
+        // 1. Calculate the actual size of your Rhino model
         const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-        
-        // Move model to center
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+
+        // 2. Center the model perfectly at 0,0,0
         model.position.x += (model.position.x - center.x);
         model.position.y += (model.position.y - center.y);
         model.position.z += (model.position.z - center.z);
 
-        // If the model is huge (Rhino mm), shrink it. If tiny, grow it.
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const scale = 5 / maxDim; 
-        model.scale.set(scale, scale, scale);
+        // 3. Rescale logic: Forces the model to be 5 units wide
+        // This fixes the "Rhino mm to Web meters" issue
+        const maxAxis = Math.max(size.x, size.y, size.z);
+        const scaleFactor = 5 / maxAxis;
+        model.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
         scene.add(model);
-        console.log("Model Loaded Successfully!");
+        console.log("Model forced to scale:", scaleFactor);
     }, 
     (xhr) => { console.log((xhr.loaded / xhr.total * 100) + '% loaded'); },
-    (error) => { console.error("Error loading model:", error); });
+    (error) => { console.error("Error:", error); });
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -82,3 +85,4 @@
 </script>
 </body>
 </html>
+
