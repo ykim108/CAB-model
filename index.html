@@ -3,73 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Model Container</title>
+    <title>3D Model Debug</title>
     <style>
-        body { margin: 0; background-color: #151520; overflow: hidden; }
+        body { margin: 0; background-color: #151520; overflow: hidden; font-family: sans-serif; }
         #canvas-container {
             display: block;
-            width: 326px;
-            height: 261px;
-            margin: 100px auto;
+            width: 80vw;
+            height: 80vh;
+            margin: 10vh auto;
             border-radius: 12px;
-            border: 1px solid #333;
+            border: 1px solid #444;
             touch-action: none;
-            cursor: grab;
         }
     </style>
 </head>
 <body>
 <div id="canvas-container"></div>
+
 <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.164.0';
     import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.164.0/examples/jsm/loaders/GLTFLoader.js';
     import { OrbitControls } from 'https://cdn.skypack.dev/three@0.164.0/examples/jsm/controls/OrbitControls.js';
 
     const container = document.getElementById('canvas-container');
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(2, 2, 5);
+    
+    // 1. ADD HELPERS (Red = X, Green = Y, Blue = Z)
+    const axesHelper = new THREE.AxesHelper(5);
+    scene.add(axesHelper);
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
+    camera.position.set(10, 10, 10);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-    const sun = new THREE.DirectionalLight(0xffffff, 2);
-    sun.position.set(5, 10, 7.5);
-    scene.add(sun);
+    // 2. SUPER LIGHTING
+    scene.add(new THREE.AmbientLight(0xffffff, 2));
+    const dLight = new THREE.DirectionalLight(0xffffff, 3);
+    dLight.position.set(10, 20, 10);
+    scene.add(dLight);
 
     const loader = new GLTFLoader();
-    let model;
-
     loader.load('3js.glb', (gltf) => {
-        model = gltf.scene;
+        const model = gltf.scene;
+
+        // 3. AUTO-RESIZE LOGIC
         const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
-        model.position.sub(center);
         
-        model.traverse((child) => {
-            if (child.isMesh) {
-                child.material = new THREE.MeshPhongMaterial({ 
-                    color: 0x00ffff, 
-                    wireframe: true,
-                    transparent: true,
-                    opacity: 0.8
-                });
-            }
-        });
-        
+        // Move model to center
+        model.position.x += (model.position.x - center.x);
+        model.position.y += (model.position.y - center.y);
+        model.position.z += (model.position.z - center.z);
+
+        // If the model is huge (Rhino mm), shrink it. If tiny, grow it.
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 5 / maxDim; 
+        model.scale.set(scale, scale, scale);
+
         scene.add(model);
-    }, undefined, (e) => console.error(e));
+        console.log("Model Loaded Successfully!");
+    }, 
+    (xhr) => { console.log((xhr.loaded / xhr.total * 100) + '% loaded'); },
+    (error) => { console.error("Error loading model:", error); });
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 4.0;
 
     function animate() {
         requestAnimationFrame(animate);
