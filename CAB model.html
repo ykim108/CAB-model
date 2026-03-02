@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model Container</title>
+    <style>
+        body { margin: 0; background-color: #151520; overflow: hidden; }
+        #canvas-container {
+            display: block;
+            width: 326px;
+            height: 261px;
+            margin: 100px auto;
+            border-radius: 12px;
+            border: 1px solid #333;
+            touch-action: none;
+            cursor: grab;
+        }
+    </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<script type="module">
+    import * as THREE from 'https://cdn.skypack.dev/three@0.164.0';
+    import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.164.0/examples/jsm/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'https://cdn.skypack.dev/three@0.164.0/examples/jsm/controls/OrbitControls.js';
+
+    const container = document.getElementById('canvas-container');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.set(2, 2, 5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 2);
+    sun.position.set(5, 10, 7.5);
+    scene.add(sun);
+
+    const loader = new GLTFLoader();
+    let model;
+
+    loader.load('3js.glb', (gltf) => {
+        model = gltf.scene;
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        model.position.sub(center);
+        
+        model.traverse((child) => {
+            if (child.isMesh) {
+                child.material = new THREE.MeshPhongMaterial({ 
+                    color: 0x00ffff, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.8
+                });
+            }
+        });
+        
+        scene.add(model);
+    }, undefined, (e) => console.error(e));
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 4.0;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+</script>
+</body>
+</html>
